@@ -1,0 +1,6 @@
+{
+  "react":            { "singleton": true, "requiredVersion": "16.14.0", "eager": true },
+  "react-dom":        { "singleton": true, "requiredVersion": "16.14.0", "eager": true },
+  "react-router-dom": {                    "requiredVersion": "5.3.4",   "eager": true },
+  "zustand":          { "singleton": true, "requiredVersion": "3.7.2",   "eager": true }
+}

@@ -1,4 +1,4 @@
-import { chunk, orderBy } from 'lodash';
+import { chunk, orderBy } from './vendor';
 
 export function paginateProducts<T>(items: T[], pageSize: number): T[][] {
   return chunk(items, pageSize);

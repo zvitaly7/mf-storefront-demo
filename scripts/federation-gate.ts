@@ -22,6 +22,7 @@ const SCENARIO_DIRS: Record<string, string> = {
   '1': '1-healthy',
   '2': '2-drift',
   '3': '3-federation-issues',
+  '4': '4-critical',
 };
 
 const DEFAULT_MIN_SCORE = 90;
