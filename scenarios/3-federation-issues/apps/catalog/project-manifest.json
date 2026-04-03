@@ -1,0 +1,40 @@
+{
+  "name": "catalog",
+  "version": "1.0.0",
+  "role": "remote",
+  "scenario": "federation-issues",
+  "dependencies": {
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "react-router-dom": "6.22.3",
+    "lodash": "4.17.21"
+  },
+  "moduleFederation": {
+    "name": "catalog",
+    "filename": "remoteEntry.js",
+    "exposes": { "./ProductList": "./src/ProductList" },
+    "shared": {
+      "react": { "singleton": true, "requiredVersion": "18.3.1" },
+      "react-dom": { "singleton": true, "requiredVersion": "18.3.1" },
+      "react-router-dom": { "singleton": true, "requiredVersion": "^6.20.0" }
+    }
+  },
+  "federationIssues": [
+    {
+      "type": "version-conflict",
+      "severity": "HIGH",
+      "package": "react-router-dom",
+      "shellRequiredVersion": "6.22.3",
+      "catalogRequiredVersion": "^6.20.0",
+      "description": "Version range mismatch — invisible per-app, critical at federation level"
+    }
+  ],
+  "scores": {
+    "overall": 92,
+    "versionAlignment": 100,
+    "singletonRisks": 100,
+    "unusedDeclarations": 100,
+    "shareCandidates": 92,
+    "federation": 55
+  }
+}

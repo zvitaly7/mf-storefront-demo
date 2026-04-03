@@ -2,20 +2,16 @@
   "name": "mf-storefront-demo",
   "version": "1.0.0",
   "private": true,
-  "workspaces": [
-    "apps/*"
-  ],
   "scripts": {
-    "start:shell": "yarn workspace shell start",
-    "start:catalog": "yarn workspace catalog start",
-    "start:checkout": "yarn workspace checkout start",
-    "build:all": "yarn workspace shell build && yarn workspace catalog build && yarn workspace checkout build",
-    "inspect:all": "bash scripts/inspect-all.sh",
-    "inspect:polyrepo": "bash scripts/inspect-polyrepo.sh",
-    "federation:gate": "ts-node scripts/federation-gate.ts"
+    "demo": "bash demo.sh",
+    "demo:healthy": "bash demo.sh --scenario 1",
+    "demo:drift": "bash demo.sh --scenario 2",
+    "demo:federation": "bash demo.sh --scenario 3",
+    "gate": "ts-node scripts/federation-gate.ts"
   },
   "devDependencies": {
-    "typescript": "^5.3.3",
-    "ts-node": "^10.9.2"
+    "@mf-toolkit/shared-inspector": "latest",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
   }
 }

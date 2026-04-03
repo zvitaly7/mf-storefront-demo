@@ -1,0 +1,30 @@
+name: Demo CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  demo:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run demo (all scenarios)
+        run: bash demo.sh
+
+      - name: Run federation gate — healthy (expect pass)
+        run: npx ts-node scripts/federation-gate.ts --scenario 1
+
+      - name: Run federation gate — drift (expect fail, score 38 < 90)
+        run: npx ts-node scripts/federation-gate.ts --scenario 2 || true
