@@ -2,7 +2,7 @@
   "name": "catalog",
   "version": "1.0.0",
   "role": "remote",
-  "scenario": "healthy",
+  "scenario": "federation-issues",
   "dependencies": {
     "react": "18.3.1",
     "react-dom": "18.3.1",
@@ -18,18 +18,23 @@
     "shared": {
       "react": { "singleton": true, "requiredVersion": "18.3.1" },
       "react-dom": { "singleton": true, "requiredVersion": "18.3.1" },
-      "react-router-dom": { "singleton": true, "requiredVersion": "6.22.3" }
+      "react-router-dom": { "singleton": true, "requiredVersion": "^6.20.0" }
     }
   },
+  "federationIssues": [
+    {
+      "type": "version-conflict",
+      "severity": "HIGH",
+      "package": "react-router-dom",
+      "shellRequiredVersion": "6.22.3",
+      "catalogRequiredVersion": "^6.20.0",
+      "description": "Version range mismatch across MFs — per-app score is fine, but cross-MF router conflict is detected only during federation analysis"
+    }
+  ],
   "depthAnalysis": {
-    "direct": {
-      "score": 100,
-      "note": "lodash not visible at direct import depth"
-    },
     "localGraph": {
       "score": 92,
-      "shareCandidates": ["lodash"],
-      "note": "lodash found via barrel pattern: ProductList -> utils/index.ts -> utils/format.ts -> lodash"
+      "shareCandidates": ["lodash"]
     }
   },
   "scores": {
@@ -37,6 +42,7 @@
     "versionAlignment": 100,
     "singletonRisks": 100,
     "unusedDeclarations": 100,
-    "shareCandidates": 92
+    "shareCandidates": 92,
+    "federation": 55
   }
 }

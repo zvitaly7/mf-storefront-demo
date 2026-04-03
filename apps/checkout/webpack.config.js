@@ -41,7 +41,8 @@ module.exports = {
           requiredVersion: deps['react-router-dom'],
         },
         zustand: {
-          singleton: true,
+          // FEDERATION ISSUE: singleton omitted — causes duplicate Zustand instances cross-MF
+          // shell declares singleton:true, checkout does not → race condition in store resolution
           requiredVersion: deps.zustand,
         },
       },

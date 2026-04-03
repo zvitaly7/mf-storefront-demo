@@ -48,6 +48,12 @@ module.exports = {
           requiredVersion: deps.zustand,
           eager: true,
         },
+        // FEDERATION ISSUE: shell declares lodash as shared, but catalog uses it without sharing
+        // → federation analysis reveals asymmetric sharing — invisible per-app, critical cross-MF
+        lodash: {
+          requiredVersion: '^4.17.21',
+          eager: true,
+        },
       },
     }),
     new HtmlWebpackPlugin({

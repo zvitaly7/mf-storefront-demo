@@ -38,7 +38,7 @@ module.exports = {
         },
         'react-router-dom': {
           singleton: true,
-          requiredVersion: deps['react-router-dom'],
+          requiredVersion: '^6.20.0', // FEDERATION ISSUE: downgraded from ^6.22.3 — version conflict cross-MF
         },
         // lodash intentionally NOT declared as shared —
         // demonstrates --depth local-graph finding it as a share candidate (score 92 vs 100)

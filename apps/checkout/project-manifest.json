@@ -2,7 +2,7 @@
   "name": "checkout",
   "version": "1.0.0",
   "role": "remote",
-  "scenario": "healthy",
+  "scenario": "federation-issues",
   "dependencies": {
     "react": "18.3.1",
     "react-dom": "18.3.1",
@@ -19,14 +19,24 @@
       "react": { "singleton": true, "requiredVersion": "18.3.1" },
       "react-dom": { "singleton": true, "requiredVersion": "18.3.1" },
       "react-router-dom": { "singleton": true, "requiredVersion": "6.22.3" },
-      "zustand": { "singleton": true, "requiredVersion": "4.5.2" }
+      "zustand": { "requiredVersion": "4.5.2" }
     }
   },
+  "federationIssues": [
+    {
+      "type": "singleton-mismatch",
+      "severity": "HIGH",
+      "package": "zustand",
+      "shellDeclaration": { "singleton": true },
+      "checkoutDeclaration": { "singleton": false },
+      "description": "shell declares zustand as singleton, checkout does not — can result in two separate Zustand instances and split state"
+    }
+  ],
   "scores": {
     "overall": 100,
     "versionAlignment": 100,
     "singletonRisks": 100,
     "unusedDeclarations": 100,
-    "federation": 100
+    "federation": 45
   }
 }
