@@ -2,10 +2,10 @@
   "name": "catalog",
   "version": "1.0.0",
   "role": "remote",
-  "scenario": "healthy",
+  "scenario": "drift",
   "dependencies": {
-    "react": "18.3.1",
-    "react-dom": "18.3.1",
+    "react": "17.0.2",
+    "react-dom": "17.0.2",
     "react-router-dom": "6.22.3",
     "lodash": "4.17.21"
   },
@@ -16,26 +16,42 @@
       "./ProductList": "./src/ProductList"
     },
     "shared": {
-      "react": { "singleton": true, "requiredVersion": "18.3.1" },
-      "react-dom": { "singleton": true, "requiredVersion": "18.3.1" },
+      "react": { "singleton": true, "requiredVersion": "17.0.2" },
+      "react-dom": { "singleton": true, "requiredVersion": "17.0.2" },
       "react-router-dom": { "singleton": true, "requiredVersion": "6.22.3" }
     }
   },
-  "depthAnalysis": {
-    "direct": {
-      "score": 100,
-      "note": "lodash not visible at direct import depth"
+  "driftIssues": [
+    {
+      "type": "version-mismatch",
+      "severity": "HIGH",
+      "package": "react",
+      "declaredVersion": "17.0.2",
+      "hostVersion": "18.3.1",
+      "impact": -20,
+      "description": "Catalog declares React 17 while host uses React 18 — singleton will resolve to host version but requiredVersion mismatch is a critical risk"
     },
+    {
+      "type": "version-mismatch",
+      "severity": "HIGH",
+      "package": "react-dom",
+      "declaredVersion": "17.0.2",
+      "hostVersion": "18.3.1",
+      "impact": -20,
+      "description": "react-dom version mismatch mirrors react mismatch"
+    }
+  ],
+  "depthAnalysis": {
     "localGraph": {
-      "score": 92,
+      "score": 38,
       "shareCandidates": ["lodash"],
-      "note": "lodash found via barrel pattern: ProductList -> utils/index.ts -> utils/format.ts -> lodash"
+      "note": "Two HIGH severity version mismatches (-20 each) plus unresolved share candidate"
     }
   },
   "scores": {
-    "overall": 92,
-    "versionAlignment": 100,
-    "singletonRisks": 100,
+    "overall": 38,
+    "versionAlignment": 38,
+    "singletonRisks": 60,
     "unusedDeclarations": 100,
     "shareCandidates": 92
   }

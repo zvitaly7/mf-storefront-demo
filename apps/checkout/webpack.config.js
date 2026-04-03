@@ -39,6 +39,7 @@ module.exports = {
         'react-router-dom': {
           singleton: true,
           requiredVersion: deps['react-router-dom'],
+          eager: true, // DRIFT: eager in remote causes singleton conflict with shell
         },
         zustand: {
           singleton: true,

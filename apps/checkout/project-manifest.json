@@ -2,7 +2,7 @@
   "name": "checkout",
   "version": "1.0.0",
   "role": "remote",
-  "scenario": "healthy",
+  "scenario": "drift",
   "dependencies": {
     "react": "18.3.1",
     "react-dom": "18.3.1",
@@ -18,14 +18,27 @@
     "shared": {
       "react": { "singleton": true, "requiredVersion": "18.3.1" },
       "react-dom": { "singleton": true, "requiredVersion": "18.3.1" },
-      "react-router-dom": { "singleton": true, "requiredVersion": "6.22.3" },
+      "react-router-dom": {
+        "singleton": true,
+        "requiredVersion": "6.22.3",
+        "eager": true
+      },
       "zustand": { "singleton": true, "requiredVersion": "4.5.2" }
     }
   },
+  "driftIssues": [
+    {
+      "type": "eager-in-remote",
+      "severity": "MEDIUM",
+      "package": "react-router-dom",
+      "impact": -10,
+      "description": "eager:true in a remote MF causes it to load synchronously and can conflict with the host's singleton resolution, leading to duplicate router instances"
+    }
+  ],
   "scores": {
-    "overall": 100,
+    "overall": 90,
     "versionAlignment": 100,
-    "singletonRisks": 100,
+    "singletonRisks": 70,
     "unusedDeclarations": 100,
     "federation": 100
   }
