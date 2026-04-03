@@ -8,6 +8,8 @@
 
 A demonstration repository for [@mf-toolkit/shared-inspector](https://github.com/zvitaly7/mf-toolkit/tree/main/packages/shared-inspector). Four real-world microfrontend scenarios — healthy, drifted, federation-broken, and critically misconfigured — all in one branch, runnable with a single command.
 
+![demo](./assets/demo.gif)
+
 ```bash
 git clone https://github.com/zvitaly7/mf-storefront-demo
 cd mf-storefront-demo
