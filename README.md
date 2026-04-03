@@ -88,6 +88,10 @@ All shared configs properly aligned. Versions match, singletons declared, no dri
 
 ![scenario 1](./assets/demo-s1.gif)
 
+> All three apps score 100/100. Shell, catalog and checkout declare matching versions with
+> correct `singleton` and `eager` flags. Federation analysis finds no cross-MF conflicts.
+> This is the target state every team should aim for.
+
 ```
 shell    Score: 100/100  ✅ HEALTHY
 catalog  Score: 100/100  ✅ HEALTHY
@@ -102,6 +106,11 @@ federation Score: 100/100  ✅ HEALTHY — No federation-level issues found.
 Two drift problems introduced surgically. Each is invisible at runtime until something breaks.
 
 ![scenario 2](./assets/demo-s2.gif)
+
+> **catalog** declares `react@17.0.2` while the host runs `react@18.3.1` — a leftover from a
+> React upgrade that was never propagated to the shared config. Score drops to 60/100.
+> **checkout** adds `eager: true` to `react-router-dom` without `singleton: true` — a classic
+> remote-initialises-the-router-first bug. Score 84/100. Both are invisible at runtime until they crash.
 
 ```
 catalog  Score: 60/100  🟠 RISKY
@@ -122,6 +131,12 @@ checkout Score: 84/100  🟡 GOOD
 All three apps score 100/100 per-app. Federation analysis reveals two hidden cross-MF problems.
 
 ![scenario 3](./assets/demo-s3.gif)
+
+> Per-app scores are all 100/100 — every linter, every per-app CI check passes.
+> Federation analysis then runs across all three manifests and finds two hidden problems:
+> **zustand** is shared as `singleton` in shell but not in checkout, so each app gets its own
+> store and auth state never reaches the cart. **lodash** is declared as shared only by shell
+> but catalog uses it unshared — shell pays the negotiation cost, catalog free-rides.
 
 ```
 shell    Score: 100/100  ✅ HEALTHY
@@ -147,6 +162,12 @@ Federation analysis:
 All three apps are catastrophically misconfigured. React, React Router, and Zustand are all declared with stale major versions against what's actually installed. Catalog and checkout compound this with singleton/eager risks on the router.
 
 ![scenario 4](./assets/demo-s4.gif)
+
+> A shared config copied from a React 16 / Router 5 / Zustand 3 project and dropped into a
+> React 18 stack with no updates. Every package is a version mismatch. Catalog stacks a
+> singleton gap and an eager risk on top of that, plus declares zustand it never imports.
+> Shell scores 20/100, catalog 1/100, checkout 4/100 — all CRITICAL.
+> The CI gate demo shows this entire federation failing the `--min-score 90` threshold.
 
 ```
 shell    Score: 20/100   🔴 CRITICAL
