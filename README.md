@@ -8,8 +8,6 @@
 
 A demonstration repository for [@mf-toolkit/shared-inspector](https://github.com/zvitaly7/mf-toolkit/tree/main/packages/shared-inspector). Four real-world microfrontend scenarios — healthy, drifted, federation-broken, and critically misconfigured — all in one branch, runnable with a single command.
 
-![demo](./assets/demo.gif)
-
 ```bash
 git clone https://github.com/zvitaly7/mf-storefront-demo
 cd mf-storefront-demo
@@ -88,6 +86,8 @@ npm run demo:federation
 
 All shared configs properly aligned. Versions match, singletons declared, no drift.
 
+![scenario 1](./assets/demo-s1.gif)
+
 ```
 shell    Score: 100/100  ✅ HEALTHY
 catalog  Score: 100/100  ✅ HEALTHY
@@ -100,6 +100,8 @@ federation Score: 100/100  ✅ HEALTHY — No federation-level issues found.
 ### Scenario 2 — Configuration Drift
 
 Two drift problems introduced surgically. Each is invisible at runtime until something breaks.
+
+![scenario 2](./assets/demo-s2.gif)
 
 ```
 catalog  Score: 60/100  🟠 RISKY
@@ -118,6 +120,8 @@ checkout Score: 84/100  🟡 GOOD
 ### Scenario 3 — Federation Issues
 
 All three apps score 100/100 per-app. Federation analysis reveals two hidden cross-MF problems.
+
+![scenario 3](./assets/demo-s3.gif)
 
 ```
 shell    Score: 100/100  ✅ HEALTHY
@@ -141,6 +145,8 @@ Federation analysis:
 ### Scenario 4 — Critical: Everything Wrong
 
 All three apps are catastrophically misconfigured. React, React Router, and Zustand are all declared with stale major versions against what's actually installed. Catalog and checkout compound this with singleton/eager risks on the router.
+
+![scenario 4](./assets/demo-s4.gif)
 
 ```
 shell    Score: 20/100   🔴 CRITICAL
