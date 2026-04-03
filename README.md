@@ -243,7 +243,14 @@ apps/shell/
 └── tsconfig.json
 ```
 
-**`shared-config.json` is the key.** It mirrors exactly what is inside the webpack `shared: { ... }` block — same packages, same `requiredVersion`, same `singleton` and `eager` flags. In a real project a team can generate it as part of their build, maintain it manually alongside the webpack config, or use the inspector's webpack plugin to keep both in sync automatically.
+**`shared-config.json` is a demo artefact, not a real project file.** In a real project the shared declarations live only inside `webpack.config.js` — there is no separate JSON. The inspector has two integration paths:
+
+| Integration | How it works | `shared-config.json` needed? |
+|---|---|---|
+| **Webpack plugin** | reads the `shared` block directly from `ModuleFederationPlugin` at build time | ✗ no |
+| **CLI `--shared`** | reads a hand-maintained JSON that mirrors the webpack `shared` block | ✓ yes |
+
+This demo uses the CLI path. Each app's `shared-config.json` is manually kept in sync with the corresponding `webpack.config.js` — that relationship is the point: when they drift apart, the inspector catches it. In production the plugin integration removes the need to maintain that file entirely.
 
 **Why a single `node_modules` instead of per-app installs?** The inspector resolves "installed version" by walking up from the source directory to the nearest `node_modules`. In this demo all apps resolve to the root install (React 18, Router 6, Zustand 4). This is the same result you would get if each app ran the inspector from its own directory in a workspace — the installed version is whatever is on disk. The drift is always introduced on the *declared* side (`requiredVersion` in shared-config or webpack), not by actually downgrading a package, which keeps the demo runnable with a single `npm install`.
 
