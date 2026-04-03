@@ -41,7 +41,8 @@ module.exports = {
           requiredVersion: deps['react-router-dom'],
         },
         // lodash intentionally NOT declared as shared —
-        // demonstrates --depth local-graph finding it as a share candidate (score 92 vs 100)
+        // --depth local-graph surfaces it in resolvedPackages via the barrel re-export chain;
+        // --depth direct misses it entirely (re-exports are skipped)
       },
     }),
     new HtmlWebpackPlugin({

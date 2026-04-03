@@ -19,9 +19,8 @@ module.exports = {
       shared: {
         react: { singleton: true, requiredVersion: deps.react },
         'react-dom': { singleton: true, requiredVersion: deps['react-dom'] },
-        // FEDERATION ISSUE: downgraded from ^6.22.3 → version conflict with shell
-        // per-app score is fine, caught only during cross-MF analysis
-        'react-router-dom': { singleton: true, requiredVersion: '^6.20.0' },
+        // catalog does not declare lodash as shared — ghost share invisible here
+        'react-router-dom': { singleton: true, requiredVersion: deps['react-router-dom'] },
       },
     }),
     new HtmlWebpackPlugin({ template: './public/index.html' }),

@@ -17,15 +17,13 @@ module.exports = {
       filename: 'remoteEntry.js',
       exposes: { './Cart': './src/Cart' },
       shared: {
-        react: { singleton: true, requiredVersion: deps.react },
-        'react-dom': { singleton: true, requiredVersion: deps['react-dom'] },
-        // DRIFT: eager:true added without singleton:true — remote can initialise the router
-        // before the host, causing duplicate instances and broken useNavigate / useParams
-        'react-router-dom': {
-          requiredVersion: deps['react-router-dom'],
-          eager: true,
-        },
-        zustand: { singleton: true, requiredVersion: deps.zustand },
+        // CRITICAL: stale React 16 — same pattern as catalog, copy-paste from old config
+        react: { singleton: true, requiredVersion: deps.react, eager: true },
+        'react-dom': { singleton: true, requiredVersion: deps['react-dom'], eager: true },
+        // CRITICAL: React Router v5 declared + eager without singleton
+        'react-router-dom': { requiredVersion: deps['react-router-dom'], eager: true },
+        // CRITICAL: Zustand v3 — store API incompatible with v4
+        zustand: { singleton: true, requiredVersion: deps.zustand, eager: true },
       },
     }),
     new HtmlWebpackPlugin({ template: './public/index.html' }),
