@@ -1,0 +1,39 @@
+name: Checkout CI
+
+on:
+  push:
+    branches: [main, 'scenario/*']
+    paths:
+      - 'apps/checkout/**'
+  pull_request:
+    paths:
+      - 'apps/checkout/**'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/checkout
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'yarn'
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Build
+        run: yarn build
+
+      - name: Upload project-manifest artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: checkout-manifest
+          path: apps/checkout/project-manifest.json
+          retention-days: 30
