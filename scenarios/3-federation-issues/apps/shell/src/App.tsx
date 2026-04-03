@@ -1,18 +1,25 @@
-import React, { Suspense, lazy } from 'react';
+import React, { Suspense, lazy, useState } from 'react';
 import { Routes, Route, Link } from 'react-router-dom';
 import { useAuthStore } from './store/authStore';
+import { debouncedSearch } from './utils/search';
 
 const ProductList = lazy(() => import('catalog/ProductList'));
 const Cart = lazy(() => import('checkout/Cart'));
 
 export default function App() {
   const { user, login, logout } = useAuthStore();
+  const [query, setQuery] = useState('');
 
   return (
     <div>
       <nav style={{ padding: '1rem', borderBottom: '1px solid #ccc' }}>
         <Link to="/" style={{ marginRight: '1rem' }}>Catalog</Link>
         <Link to="/cart">Cart</Link>
+        <input
+          placeholder="Search…"
+          onChange={(e) => debouncedSearch((q) => setQuery(q), e.target.value)}
+          style={{ marginLeft: '2rem' }}
+        />
         <span style={{ marginLeft: '2rem' }}>
           {user ? (
             <>

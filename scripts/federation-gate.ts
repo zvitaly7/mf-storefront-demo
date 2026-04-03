@@ -1,25 +1,22 @@
 /**
  * federation-gate.ts — CI score gate
  *
- * Reads project-manifest.json from a scenario, checks scores against
- * configurable thresholds, exits non-zero if any threshold is breached.
+ * Runs @mf-toolkit/shared-inspector on each app in a scenario,
+ * then runs federation analysis. Exits non-zero if any score is
+ * below the configured threshold.
  *
  * Usage:
  *   ts-node scripts/federation-gate.ts --scenario 1
- *   ts-node scripts/federation-gate.ts --scenario 2 --threshold 80
+ *   ts-node scripts/federation-gate.ts --scenario 2 --min-score 80
  *   ts-node scripts/federation-gate.ts --scenario 1 --app catalog
  */
 
+import { execSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 
-interface Manifest {
-  name: string;
-  scores: {
-    overall: number;
-    [key: string]: number;
-  };
-}
+const ROOT = path.resolve(__dirname, '..');
+const MF_CLI = path.join(ROOT, 'node_modules/@mf-toolkit/shared-inspector/dist/cli.js');
 
 const SCENARIO_DIRS: Record<string, string> = {
   '1': '1-healthy',
@@ -27,38 +24,41 @@ const SCENARIO_DIRS: Record<string, string> = {
   '3': '3-federation-issues',
 };
 
-const DEFAULT_THRESHOLDS: Record<string, number> = {
-  shell: 100,
-  catalog: 90,
-  checkout: 100,
-};
+const DEFAULT_MIN_SCORE = 90;
 
-function parseArgs(): { scenario: string; appFilter?: string; threshold?: number } {
+function parseArgs(): { scenario: string; appFilter?: string; minScore: number } {
   const args = process.argv.slice(2);
   let scenario = '1';
   let appFilter: string | undefined;
-  let threshold: number | undefined;
+  let minScore = DEFAULT_MIN_SCORE;
 
   for (let i = 0; i < args.length; i++) {
-    if (args[i] === '--scenario') scenario = args[++i];
-    if (args[i] === '--app') appFilter = args[++i];
-    if (args[i] === '--threshold') threshold = parseInt(args[++i], 10);
+    if (args[i] === '--scenario')  scenario  = args[++i];
+    if (args[i] === '--app')       appFilter = args[++i];
+    if (args[i] === '--min-score') minScore  = parseInt(args[++i], 10);
   }
-
-  return { scenario, appFilter, threshold };
+  return { scenario, appFilter, minScore };
 }
 
-function loadManifest(scenarioDir: string, app: string): Manifest | null {
-  const p = path.join(process.cwd(), 'scenarios', scenarioDir, 'apps', app, 'project-manifest.json');
-  if (!fs.existsSync(p)) {
-    console.error(`  [MISSING] ${p}`);
-    return null;
-  }
-  return JSON.parse(fs.readFileSync(p, 'utf-8')) as Manifest;
+function runInspector(appDir: string, appName: string, kind: string): { score: number; label: string } {
+  const cmd = [
+    `node ${MF_CLI}`,
+    `--source ${path.join(appDir, 'src')}`,
+    `--shared ${path.join(appDir, 'shared-config.json')}`,
+    `--name ${appName}`,
+    `--kind ${kind}`,
+    '--write-manifest',
+    `--output-dir ${appDir}`,
+    '--json',
+  ].join(' ');
+
+  const output = execSync(cmd, { cwd: ROOT }).toString();
+  const result = JSON.parse(output);
+  return { score: result.score.score, label: result.score.label };
 }
 
 function main(): void {
-  const { scenario, appFilter, threshold: globalThreshold } = parseArgs();
+  const { scenario, appFilter, minScore } = parseArgs();
   const scenarioDir = SCENARIO_DIRS[scenario];
 
   if (!scenarioDir) {
@@ -66,43 +66,62 @@ function main(): void {
     process.exit(1);
   }
 
-  const scenarioPath = path.join(process.cwd(), 'scenarios', scenarioDir, 'apps');
-  if (!fs.existsSync(scenarioPath)) {
-    console.error(`Scenario directory not found: ${scenarioPath}`);
+  const appsPath = path.join(ROOT, 'scenarios', scenarioDir, 'apps');
+  if (!fs.existsSync(appsPath)) {
+    console.error(`Scenario path not found: ${appsPath}`);
     process.exit(1);
   }
 
   const apps = appFilter
     ? [appFilter]
-    : fs.readdirSync(scenarioPath).filter((d) =>
-        fs.statSync(path.join(scenarioPath, d)).isDirectory()
-      );
+    : fs.readdirSync(appsPath).filter((d) => fs.statSync(path.join(appsPath, d)).isDirectory());
 
-  console.log(`\n=== Federation Gate — scenario ${scenario} (${scenarioDir}) ===\n`);
+  console.log(`\n=== Federation Gate — scenario ${scenario} (${scenarioDir}) | threshold: ${minScore} ===\n`);
 
   let allPassed = true;
+  const manifests: string[] = [];
 
   for (const app of apps) {
-    const manifest = loadManifest(scenarioDir, app);
-    if (!manifest) { allPassed = false; continue; }
+    const appDir = path.join(appsPath, app);
+    const kind = app === 'shell' ? 'host' : 'remote';
 
-    const threshold = globalThreshold ?? DEFAULT_THRESHOLDS[app] ?? 80;
-    const score = manifest.scores.overall;
-    const pass = score >= threshold;
-    const icon = pass ? '✓' : '✗';
+    try {
+      const { score, label } = runInspector(appDir, app, kind);
+      const pass = score >= minScore;
+      const icon = pass ? '✓' : '✗';
+      console.log(`  ${icon} ${app}: ${score}/100 ${label}  (threshold: ${minScore})`);
+      if (!pass) allPassed = false;
+      manifests.push(path.join(appDir, 'project-manifest.json'));
+    } catch (err) {
+      console.error(`  ✗ ${app}: inspector failed — ${(err as Error).message}`);
+      allPassed = false;
+    }
+  }
 
-    console.log(`  ${icon} ${app}: overall=${score}  (threshold: ${threshold})`);
-    if (!pass) allPassed = false;
+  // Federation analysis when inspecting all apps
+  if (!appFilter && manifests.length > 1) {
+    console.log('\n  --- Federation analysis ---');
+    try {
+      const fedCmd = `node ${MF_CLI} federation ${manifests.join(' ')} --json`;
+      const fedOutput = execSync(fedCmd, { cwd: ROOT }).toString();
+      const fedResult = JSON.parse(fedOutput);
+      const fedScore: number = fedResult.score.score;
+      const pass = fedScore >= minScore;
+      const icon = pass ? '✓' : '✗';
+      console.log(`  ${icon} federation: ${fedScore}/100 ${fedResult.score.label}  (threshold: ${minScore})`);
+      if (!pass) allPassed = false;
+    } catch (err) {
+      console.error(`  ✗ federation: analysis failed — ${(err as Error).message}`);
+      allPassed = false;
+    }
   }
 
   console.log('');
-
   if (!allPassed) {
-    console.error('Gate FAILED — one or more apps did not meet score thresholds.');
+    console.error('Gate FAILED — one or more checks did not meet the score threshold.');
     process.exit(1);
   }
-
-  console.log('Gate PASSED — all apps meet score thresholds.');
+  console.log('Gate PASSED — all checks meet the score threshold.');
 }
 
 main();

@@ -10,8 +10,14 @@
     "gate": "ts-node scripts/federation-gate.ts"
   },
   "devDependencies": {
-    "@mf-toolkit/shared-inspector": "latest",
+    "@mf-toolkit/shared-inspector": "^0.5.3",
+    "@types/lodash": "^4.17.0",
+    "lodash": "^4.17.21",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.22.3",
     "ts-node": "^10.9.2",
-    "typescript": "^5.3.3"
+    "typescript": "^5.9.3",
+    "zustand": "^4.5.2"
   }
 }

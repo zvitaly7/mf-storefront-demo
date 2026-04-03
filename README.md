@@ -4,6 +4,7 @@
 [![node](https://img.shields.io/badge/node-%E2%89%A518-339933?logo=node.js)](https://nodejs.org)
 [![react](https://img.shields.io/badge/react-18.3.1-61DAFB?logo=react)](https://react.dev)
 [![webpack](https://img.shields.io/badge/webpack-5-8DD6F9?logo=webpack)](https://webpack.js.org)
+[![inspector](https://img.shields.io/npm/v/@mf-toolkit/shared-inspector?label=%40mf-toolkit%2Fshared-inspector&color=CB3837&logo=npm)](https://www.npmjs.com/package/@mf-toolkit/shared-inspector)
 
 A demonstration repository for [@mf-toolkit/shared-inspector](https://github.com/zvitaly7/mf-toolkit/tree/main/packages/shared-inspector). Three real-world microfrontend scenarios — healthy, drifted, and federation-broken — all in one branch, runnable with a single command.
 
@@ -26,20 +27,23 @@ Three independent React 18 applications composed via Webpack Module Federation:
 | **catalog** | Remote — product listing | React 18, React Router 6, Lodash 4 |
 | **checkout** | Remote — cart & payment | React 18, React Router 6, Zustand 4 |
 
-Each app is isolated: its own `package.json`, `tsconfig.json`, and webpack config. No cross-app local imports. Designed to feel like a poly-repo even though it lives in a monorepo.
+Each app is isolated: its own `package.json`, `tsconfig.json`, webpack config, and `shared-config.json` for the inspector. No cross-app local imports.
 
 ```
 mf-storefront-demo/
 ├── scenarios/
-│   ├── 1-healthy/           ← all configs aligned, scores 100/92/100
+│   ├── 1-healthy/           ← all configs aligned, scores 100/100/100
 │   │   └── apps/{shell,catalog,checkout}/
-│   ├── 2-drift/             ← config decay, catalog drops to 38/100
+│   │       ├── src/
+│   │       ├── shared-config.json   ← MF shared declarations for inspector
+│   │       └── webpack.config.js
+│   ├── 2-drift/             ← config decay: catalog 60/100, checkout 84/100
 │   │   └── apps/{shell,catalog,checkout}/
-│   └── 3-federation-issues/ ← cross-MF conflicts invisible per-app
+│   └── 3-federation-issues/ ← per-app 100/100, federation reveals hidden issues
 │       └── apps/{shell,catalog,checkout}/
 ├── scripts/
 │   └── federation-gate.ts   ← CI score gate
-├── demo.sh                  ← runs all three scenarios
+├── demo.sh                  ← runs all three scenarios end-to-end
 └── package.json
 ```
 
@@ -62,7 +66,6 @@ Or via npm:
 
 ```bash
 npm run demo
-npm run demo:healthy
 npm run demo:drift
 npm run demo:federation
 ```
@@ -73,66 +76,76 @@ npm run demo:federation
 
 ### Scenario 1 — Healthy Baseline
 
-All shared configs properly aligned. Versions match. Singletons declared. No drift.
+All shared configs properly aligned. Versions match, singletons declared, no drift.
 
-| App | Score |
-|---|---|
-| shell | ✅ 100 / 100 |
-| catalog | ✅ 92 / 100 |
-| checkout | ✅ 100 / 100 |
-| federation | ✅ 100 / 100 |
-
-> **Why does catalog score 92?** It uses lodash via a barrel import — `ProductList → utils/index.ts → utils/format.ts → lodash`. Running with `--depth direct` misses it (scores 100). Running with `--depth local-graph` (default) walks the import graph and surfaces lodash as an unshared candidate. This is the depth demonstration.
+```
+shell    Score: 100/100  ✅ HEALTHY
+catalog  Score: 100/100  ✅ HEALTHY
+checkout Score: 100/100  ✅ HEALTHY
+federation Score: 100/100  ✅ HEALTHY — No federation-level issues found.
+```
 
 ---
 
 ### Scenario 2 — Configuration Drift
 
-Two drift problems introduced surgically. Both look fine at runtime — until something breaks in production.
+Two drift problems introduced surgically. Each is invisible at runtime until something breaks.
 
-| App | Score | Problem |
-|---|---|---|
-| shell | ✅ 100 / 100 | — |
-| catalog | ❌ 38 / 100 | React 17 declared, host uses React 18 — `HIGH` × 2, −20 each |
-| checkout | ⚠️ 90 / 100 | `react-router-dom` marked `eager: true` in a remote — singleton conflict risk |
-| federation | — | — |
+```
+catalog  Score: 60/100  🟠 RISKY
+  ⚠ Version Mismatch — react     (configured: 17.0.2 | installed: 18.3.1)
+  ⚠ Version Mismatch — react-dom (configured: 17.0.2 | installed: 18.3.1)
 
-**What this demonstrates:** A stale `package.json` that nobody updated after a major React upgrade. Per-app analysis catches it immediately. Without tooling, it's invisible until the MF loads and blows up with a hooks error.
+checkout Score: 84/100  🟡 GOOD
+  ⚠ Singleton Risk — react-router-dom (singleton: true is missing)
+  ⚠ Eager Risk     — react-router-dom (eager: true without singleton: true)
+```
+
+**What this demonstrates:** A stale `shared-config.json` where someone declared `requiredVersion: "17.0.2"` after a React upgrade that was never propagated. The inspector catches it at build time, before a runtime "Invalid hook call" in production.
 
 ---
 
 ### Scenario 3 — Federation Issues
 
-Three problems that score fine per-app but are critical at the federation level. Impossible to catch with per-app tooling alone.
+All three apps score 100/100 per-app. Federation analysis reveals two hidden cross-MF problems.
 
-| App | Per-app | Federation | Problem |
-|---|---|---|---|
-| shell | ✅ 100 / 100 | ⚠️ 65 / 100 | Declares `lodash` as shared — catalog does not |
-| catalog | ✅ 92 / 100 | ❌ 55 / 100 | `react-router-dom` required `^6.20.0` vs shell's `6.22.3` |
-| checkout | ✅ 100 / 100 | ❌ 45 / 100 | `zustand` without `singleton: true` — shell uses singleton |
+```
+shell    Score: 100/100  ✅ HEALTHY
+catalog  Score: 100/100  ✅ HEALTHY
+checkout Score: 100/100  ✅ HEALTHY
 
-**What this demonstrates:** Cross-MF manifest aggregation is the only way to surface these. A router version range mismatch and a singleton declaration asymmetry both look clean in isolation.
+Federation analysis:
+  ⚠ Singleton Mismatch — zustand
+     singleton in: [shell]
+     not singleton in: [checkout]
+
+  ✗ Ghost Share — lodash
+     shared only by: shell
+     used unshared by: [catalog]
+```
+
+**What this demonstrates:** Per-app tooling gives you a false sense of safety. The zustand singleton mismatch (`singleton: true` in shell, absent in checkout) means shell and checkout run separate Zustand stores — auth state doesn't reach the cart. The lodash ghost share means shell pays the cost of sharing a library only it benefits from. Neither issue appears in per-app scores.
 
 ---
 
 ## CI Gate
 
 ```bash
-# Healthy baseline — all apps must pass
+# Healthy baseline must pass (threshold 90)
 ts-node scripts/federation-gate.ts --scenario 1
 
-# Drift scenario — catalog will fail (score 38 < threshold 90)
+# Drift scenario will fail (catalog: 60, checkout: 84 — both below 90)
 ts-node scripts/federation-gate.ts --scenario 2
 
-# Custom threshold for a single app
-ts-node scripts/federation-gate.ts --scenario 1 --app catalog --threshold 85
+# Custom threshold
+ts-node scripts/federation-gate.ts --scenario 1 --min-score 100
 ```
 
 ---
 
-## Key Implementation Detail — Barrel Pattern
+## Depth Analysis — Barrel Pattern
 
-The catalog app is structured so that `lodash` is never imported directly in component files:
+The `catalog` app is structured so that `lodash` is never imported directly in component files:
 
 ```
 ProductList.tsx
@@ -141,15 +154,21 @@ ProductList.tsx
               └── utils/format.ts  imports { chunk, orderBy } from 'lodash'
 ```
 
-This is the ground truth for demonstrating `--depth direct` vs `--depth local-graph`:
+Run the inspector with both depth modes on the healthy scenario to see the difference:
 
 ```bash
-# --depth direct: lodash invisible → score 100
-npx @mf-toolkit/shared-inspector --project scenarios/1-healthy/apps/catalog --depth direct
+# --depth direct: only sees explicit imports → lodash invisible
+mf-inspector --source scenarios/1-healthy/apps/catalog/src \
+             --shared scenarios/1-healthy/apps/catalog/shared-config.json \
+             --depth direct
 
-# --depth local-graph: walks barrel imports → lodash found → score 92
-npx @mf-toolkit/shared-inspector --project scenarios/1-healthy/apps/catalog --depth local-graph
+# --depth local-graph (default): follows re-exports → lodash surfaced as candidate
+mf-inspector --source scenarios/1-healthy/apps/catalog/src \
+             --shared scenarios/1-healthy/apps/catalog/shared-config.json \
+             --depth local-graph
 ```
+
+> In the healthy scenario lodash is not in the built-in share-candidates list so the score stays 100 either way. Switch to scenario 3 to see the ghost share detected at federation level once shell starts sharing it.
 
 ---
 
