@@ -281,7 +281,11 @@ apps/shell/
 
 This demo uses the CLI path. Each app's `shared-config.json` is manually kept in sync with the corresponding `webpack.config.js` — that relationship is the point: when they drift apart, the inspector catches it. In production the plugin integration removes the need to maintain that file entirely.
 
-**Why a single `node_modules` instead of per-app installs?** The inspector resolves "installed version" by walking up from the source directory to the nearest `node_modules`. In this demo all apps resolve to the root install (React 18, Router 6, Zustand 4). This is the same result you would get if each app ran the inspector from its own directory in a workspace — the installed version is whatever is on disk. The drift is always introduced on the *declared* side (`requiredVersion` in shared-config or webpack), not by actually downgrading a package, which keeps the demo runnable with a single `npm install`.
+**How version resolution actually works.** The inspector reads installed versions from `node_modules` adjacent to the `package.json` in the working directory — not from the `--source` path. In this demo `demo.sh` runs from the repo root, so all apps resolve to the root `node_modules` (React 18, Router 6, Zustand 4). The per-app `package.json` files inside each scenario directory are documentation — they show what version that app *targets*, but the inspector never reads them directly.
+
+The drift is always introduced on the *declared* side: `requiredVersion` in `shared-config.json` is set to an old version while the installed package in root `node_modules` is the new one. This models the most common real-world drift: a team upgrades their dependency but forgets to update the webpack `shared` block.
+
+In a real per-repo setup a team would run `mf-inspector` from their own repo root, where their own `package.json` and `node_modules` live. The inspector would then compare their `shared-config.json` against whatever they actually have installed — the same logic, just scoped to their repo.
 
 **Bootstrap pattern.** All apps use the two-file async bootstrap that Module Federation requires:
 
