@@ -12,6 +12,7 @@
 #    bash demo.sh --depth          # depth comparison only
 #    bash demo.sh --ci-gate        # CI gate demonstration only
 #    bash demo.sh --bridge         # mf-bridge integration diff only
+#    bash demo.sh --ssr             # mf-ssr capability demo only
 # ============================================================
 set -euo pipefail
 
@@ -29,6 +30,7 @@ APP_FILTER=""
 DEPTH_ONLY=false
 CI_GATE_ONLY=false
 BRIDGE_ONLY=false
+SSR_ONLY=false
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -37,6 +39,7 @@ while [[ $# -gt 0 ]]; do
     --depth)     DEPTH_ONLY=true;      shift   ;;
     --ci-gate)   CI_GATE_ONLY=true;    shift   ;;
     --bridge)    BRIDGE_ONLY=true;     shift   ;;
+    --ssr)       SSR_ONLY=true;        shift   ;;
     *) echo "Unknown argument: $1"; exit 1 ;;
   esac
 done
@@ -178,6 +181,61 @@ run_bridge_comparison() {
   run_federation "$ROOT/scenarios/5-mf-bridge"
 }
 
+run_ssr_comparison() {
+  header "MF SSR — live fragment handler + capability matrix"
+
+  local shell_before="$ROOT/scenarios/5-mf-bridge/apps/shell/src/features/Checkout.tsx"
+  local shell_after="$ROOT/scenarios/6-mf-ssr/apps/shell/src/features/Checkout.tsx"
+  local remote_fragment="$ROOT/scenarios/6-mf-ssr/apps/checkout/server/fragment.ts"
+  local remote_hydrate="$ROOT/scenarios/6-mf-ssr/apps/checkout/src/hydrate.ts"
+  local shell_server="$ROOT/scenarios/6-mf-ssr/apps/shell/src/server.tsx"
+
+  subheader "  Host — <MFBridgeLazy> (scenario 5) → <MFBridgeSSR> (scenario 6)"
+  echo -e "${DIM}    $shell_before${RESET}"
+  sed -n '1,20p' "$shell_before" | sed 's/^/    /'
+  echo ""
+  echo -e "${DIM}    $shell_after${RESET}"
+  sed -n '1,30p' "$shell_after" | sed 's/^/    /'
+
+  subheader "  Remote — fragment endpoint (URL Mode)"
+  echo -e "${DIM}    $remote_fragment${RESET}"
+  cat "$remote_fragment" | sed 's/^/    /'
+
+  subheader "  Remote — client-side hydration"
+  echo -e "${DIM}    $remote_hydrate${RESET}"
+  cat "$remote_hydrate" | sed 's/^/    /'
+
+  subheader "  Shell — streaming SSR entry (renderToReadableStream)"
+  echo -e "${DIM}    $shell_server${RESET}"
+  sed -n '1,30p' "$shell_server" | sed 's/^/    /'
+
+  subheader "  Live run — scripts/ssr-demo.mts"
+  echo -e "${DIM}    Executes the real fragment handler under Node 18+ — no browser,${RESET}"
+  echo -e "${DIM}    no dev server. Prints bytes, headers, streaming chunks, and${RESET}"
+  echo -e "${DIM}    every capability listed in the mf-ssr README.${RESET}"
+  if [[ ! -x "$ROOT/node_modules/.bin/tsx" ]]; then
+    echo "    tsx not found — run: npm install"
+    return
+  fi
+  if [[ ! -d "$ROOT/node_modules/@mf-toolkit/mf-ssr" ]]; then
+    echo "    @mf-toolkit/mf-ssr not installed — run: npm install"
+    return
+  fi
+  (cd "$ROOT" && NODE_OPTIONS='--conditions=worker' node_modules/.bin/tsx scripts/ssr-demo.mts) 2>&1 | sed 's/^/    /'
+
+  echo -e "\n  ${BOLD}Per-app inspector scores (scenario 6 stays healthy)${RESET}"
+  separator
+  for app_dir in "$ROOT/scenarios/6-mf-ssr"/apps/*/; do
+    [[ -d "$app_dir" ]] || continue
+    local app_name
+    app_name=$(basename "$app_dir")
+    local kind
+    kind=$([ "$app_name" = "shell" ] && echo "host" || echo "remote")
+    inspect_app "$app_dir" "$app_name" "$kind"
+  done
+  run_federation "$ROOT/scenarios/6-mf-ssr"
+}
+
 run_ci_gate() {
   header "CI Gate — federation-gate.ts"
 
@@ -219,19 +277,28 @@ if $BRIDGE_ONLY; then
   exit 0
 fi
 
+if $SSR_ONLY; then
+  run_ssr_comparison
+  echo ""
+  exit 0
+fi
+
 declare -A LABELS=(
   [1]="1-healthy:Healthy Baseline"
   [2]="2-drift:Configuration Drift"
   [3]="3-federation-issues:Federation Issues"
   [4]="4-critical:Critical — Everything Wrong"
   [5]="5-mf-bridge:MF Bridge Integration"
+  [6]="6-mf-ssr:MF SSR Integration"
 )
 
-for num in 1 2 3 4 5; do
+for num in 1 2 3 4 5 6; do
   IFS=: read -r dir label <<< "${LABELS[$num]}"
   [[ -n "$SCENARIO_FILTER" && "$SCENARIO_FILTER" != "$num" ]] && continue
   if [[ "$num" == "5" ]]; then
     run_bridge_comparison
+  elif [[ "$num" == "6" ]]; then
+    run_ssr_comparison
   else
     run_scenario "$num" "$dir" "$label"
   fi
@@ -249,4 +316,5 @@ echo -e "${DIM}  bash demo.sh --app catalog      compare one app across all scen
 echo -e "${DIM}  bash demo.sh --depth            barrel depth comparison only${RESET}"
 echo -e "${DIM}  bash demo.sh --ci-gate          CI gate demonstration only${RESET}"
 echo -e "${DIM}  bash demo.sh --bridge           mf-bridge integration diff only${RESET}"
+echo -e "${DIM}  bash demo.sh --ssr              mf-ssr capability demo only${RESET}"
 echo ""

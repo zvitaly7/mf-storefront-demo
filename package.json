@@ -9,12 +9,15 @@
     "demo:federation": "bash demo.sh --scenario 3",
     "demo:critical": "bash demo.sh --scenario 4",
     "demo:bridge": "bash demo.sh --scenario 5",
+    "demo:ssr": "bash demo.sh --scenario 6",
     "demo:depth": "bash demo.sh --depth",
     "demo:ci-gate": "bash demo.sh --ci-gate",
-    "gate": "ts-node scripts/federation-gate.ts"
+    "gate": "ts-node scripts/federation-gate.ts",
+    "ssr": "NODE_OPTIONS='--conditions=worker' tsx scripts/ssr-demo.mts"
   },
   "devDependencies": {
     "@mf-toolkit/mf-bridge": "^1.0.0",
+    "@mf-toolkit/mf-ssr": "^1.0.0",
     "@mf-toolkit/shared-inspector": "^0.5.3",
     "@types/lodash": "^4.17.0",
     "lodash": "^4.17.21",
@@ -22,6 +25,7 @@
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.22.3",
     "ts-node": "^10.9.2",
+    "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "zustand": "^4.5.2"
   }

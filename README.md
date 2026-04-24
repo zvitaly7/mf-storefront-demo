@@ -6,7 +6,7 @@
 [![webpack](https://img.shields.io/badge/webpack-5-8DD6F9?logo=webpack)](https://webpack.js.org)
 [![inspector](https://img.shields.io/npm/v/@mf-toolkit/shared-inspector?label=%40mf-toolkit%2Fshared-inspector&color=CB3837&logo=npm)](https://www.npmjs.com/package/@mf-toolkit/shared-inspector)
 
-A demonstration repository for [@mf-toolkit](https://github.com/zvitaly7/mf-toolkit). Five real-world microfrontend scenarios — healthy, drifted, federation-broken, critically misconfigured, and a runtime integration via [`@mf-toolkit/mf-bridge`](https://github.com/zvitaly7/mf-toolkit/tree/main/packages/mf-bridge) — all in one branch, runnable with a single command.
+A demonstration repository for [@mf-toolkit](https://github.com/zvitaly7/mf-toolkit). Six real-world microfrontend scenarios — healthy, drifted, federation-broken, critically misconfigured, a runtime integration via [`@mf-toolkit/mf-bridge`](https://github.com/zvitaly7/mf-toolkit/tree/main/packages/mf-bridge), and an SSR integration via [`@mf-toolkit/mf-ssr`](https://github.com/zvitaly7/mf-toolkit/tree/main/packages/mf-ssr) — all in one branch, runnable with a single command.
 
 ```bash
 git clone https://github.com/zvitaly7/mf-storefront-demo
@@ -43,10 +43,18 @@ mf-storefront-demo/
 │   │   └── apps/{shell,catalog,checkout}/
 │   ├── 4-critical/          ← everything wrong: shell 20, catalog 1, checkout 4
 │   │   └── apps/{shell,catalog,checkout}/
-│   └── 5-mf-bridge/         ← healthy federation, wired via @mf-toolkit/mf-bridge
-│       └── apps/{shell,catalog,checkout}/
+│   ├── 5-mf-bridge/         ← healthy federation, wired via @mf-toolkit/mf-bridge
+│   │   └── apps/{shell,catalog,checkout}/
+│   └── 6-mf-ssr/            ← SSR fragments + client hydration via @mf-toolkit/mf-ssr
+│       └── apps/
+│           ├── shell/src/     ← <MFBridgeSSR> (loader + url mode)
+│           ├── catalog/src/   ← Loader-Mode remote (exposes component)
+│           └── checkout/
+│               ├── src/       ← client bundle (Cart + hydrate.ts)
+│               └── server/    ← fragment handler for Node/edge/workers
 ├── scripts/
-│   └── federation-gate.ts   ← CI score gate
+│   ├── federation-gate.ts   ← CI score gate
+│   └── ssr-demo.mts         ← live mf-ssr capability demo (10 cases)
 ├── demo.sh                  ← runs all scenarios end-to-end
 └── package.json
 ```
@@ -73,6 +81,9 @@ bash demo.sh --ci-gate
 
 # mf-bridge integration diff only
 bash demo.sh --bridge
+
+# mf-ssr live capability demo only
+bash demo.sh --ssr
 ```
 
 Or via npm:
@@ -82,6 +93,7 @@ npm run demo
 npm run demo:drift
 npm run demo:federation
 npm run demo:bridge
+npm run demo:ssr
 ```
 
 ---
@@ -274,6 +286,62 @@ The fixes applied to get to the clean 100/100 above:
 
 ---
 
+### Scenario 6 — MF SSR Integration
+
+The same storefront, but the remotes are rendered **server-side** into streaming HTML with [`@mf-toolkit/mf-ssr`](https://github.com/zvitaly7/mf-toolkit/tree/main/packages/mf-ssr). The shell composes two modes side by side:
+
+- **Loader Mode** (`catalog`) — host imports the remote component through Module Federation and server-renders it inline. One roundtrip.
+- **URL Mode** (`checkout`) — remote exposes a Web-standard fragment endpoint (`createMFReactFragment`) on Node/Cloudflare/Vercel/Bun; shell fetches its pre-rendered HTML during SSR and keeps it alive post-hydration through `DOMEventBus` prop streaming.
+
+```
+remote  catalog/src/entry.ts        export { ProductList }          ← raw component for Loader Mode
+remote  checkout/server/fragment.ts createMFReactFragment(Cart, {…}) ← Web fetch handler
+remote  checkout/src/hydrate.ts     hydrateWithBridge(Cart, {ns:'checkout'})
+
+host    shell/src/server.tsx        renderToReadableStream(<App/>)   ← edge-native streaming SSR
+host    shell/src/features/Catalog.tsx
+          <MFBridgeSSR loader={…}   props={{ products, onAddToCart }} />
+host    shell/src/features/Checkout.tsx
+          <MFBridgeSSR url="…"      namespace="checkout"
+                        props={{ userId, items }}
+                        cacheKey={userId}
+                        fetchOptions={{ headers: { authorization } }}
+                        onEvent={typedHandler}
+                        commandRef={cmdRef} />
+```
+
+**Live demo** — a real Node script exercises ten mf-ssr capabilities against the actual fragment handler, no dev server, no browser required:
+
+```bash
+bash demo.sh --ssr    # or: npm run demo:ssr
+```
+
+It prints:
+
+1. **Basic handler invocation** — status, headers, full HTML body (≈ 728 B for a populated cart)
+2. **Streaming body** — `ReadableStream` chunks with offsets; `<Suspense>`-gated remotes flush their shells first
+3. **Props in `?props=`** — URL-encoded JSON decoded server-side, rendered into HTML, also inlined as `<script data-mf-props>` for hydration matching
+4. **Cache-Control + Vary** — three configurations side by side (`no-store` default, `public, s-maxage=60, stale-while-revalidate=30 + Vary: Accept-Language`, `private, max-age=0`)
+5. **Error path** — malformed `?props=` lands on the component's empty-state branch with status 200; missing `?props=` likewise — no 500s leaking out of the handler
+6. **Parallel composition** — three fragments in `Promise.all` vs sequential, wall-time delta printed
+7. **Payload comparison** — client-only empty mount (31 B, empty until JS loads) vs SSR fragment (full rendered cart on first paint)
+8. **Runtime portability** — the handler is `(Request) => Promise<Response>`; same file plugs into `node:http`, Hono, Next.js route handler, Cloudflare Worker, Bun.serve
+9. **Hydration contract** — actual wire format emitted by the handler + the matching `hydrateWithBridge(Cart, { namespace })` on the client, with annotations for each step
+10. **`cacheKey` / `preloadFragment` / `clearFragmentCache`** — per-user cache slots for auth-bound fragments, pre-warming on hover, cache eviction on logout
+
+**Architectural choice on sharing.** Scenario 6 is a polyrepo split: only React, ReactDOM, and React Router are federation-shared. `@mf-toolkit/mf-ssr` is used only by the shell's client bundle and `@mf-toolkit/mf-bridge` only by checkout's hydration entry — neither is declared `shared: singleton`, so each MF bundles its own copy. This is correct: `DOMEventBus` dispatches via `CustomEvent` on the DOM (native, cross-bundle) and the fragment handler lives in `checkout/server/` outside the webpack MF scope entirely. The inspector confirms it — per-app and federation all green.
+
+```
+shell      Score: 100/100  ✅ HEALTHY
+catalog    Score: 100/100  ✅ HEALTHY
+checkout   Score: 100/100  ✅ HEALTHY
+federation Score: 100/100  ✅ HEALTHY
+```
+
+**What this demonstrates:** `shared-inspector` + `mf-bridge` catch build-time and client-runtime concerns. `mf-ssr` adds the **first-paint** layer — actual rendered HTML reaches the browser before JS loads, measured in real bytes here, not hand-waving. The three packages compose: the same remote can be rendered by mf-ssr server-side and kept interactive by mf-bridge client-side, and the shared-inspector keeps the federation configuration honest through all of it.
+
+---
+
 ## Depth Analysis — Barrel Pattern
 
 The `catalog` app is structured so that `lodash` is never imported directly in component files:
@@ -388,6 +456,7 @@ The dynamic import is not optional — it gives webpack the chance to negotiate 
 
 - [@mf-toolkit/shared-inspector](https://github.com/zvitaly7/mf-toolkit/tree/main/packages/shared-inspector) — build-time shared-config linter (scenarios 1–4)
 - [@mf-toolkit/mf-bridge](https://github.com/zvitaly7/mf-toolkit/tree/main/packages/mf-bridge) — runtime mount/lifecycle/events for MF remotes (scenario 5)
+- [@mf-toolkit/mf-ssr](https://github.com/zvitaly7/mf-toolkit/tree/main/packages/mf-ssr) — SSR fragments, streaming composition, edge-native (scenario 6)
 - [mf-toolkit](https://github.com/zvitaly7/mf-toolkit) — the full toolkit
 
 ## License
