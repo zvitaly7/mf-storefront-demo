@@ -316,6 +316,8 @@ host    shell/src/features/Checkout.tsx
 bash demo.sh --ssr    # or: npm run demo:ssr
 ```
 
+![scenario 6](./assets/demo-s6.gif)
+
 It prints:
 
 1. **Basic handler invocation** — status, headers, full HTML body (≈ 728 B for a populated cart)
