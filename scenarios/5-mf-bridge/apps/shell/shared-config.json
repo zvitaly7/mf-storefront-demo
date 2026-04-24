@@ -1,6 +1,6 @@
 {
-  "react":            { "singleton": true, "requiredVersion": "18.3.1", "eager": true },
-  "react-dom":        { "singleton": true, "requiredVersion": "18.3.1", "eager": true },
-  "react-router-dom": { "singleton": true, "requiredVersion": "6.22.3", "eager": true },
-  "zustand":          { "singleton": true, "requiredVersion": "4.5.2",  "eager": true }
+  "react":                  { "singleton": true, "requiredVersion": "18.3.1", "eager": true },
+  "react-dom":              { "singleton": true, "requiredVersion": "18.3.1", "eager": true },
+  "react-router-dom":       { "singleton": true, "requiredVersion": "6.22.3", "eager": true },
+  "@mf-toolkit/mf-bridge":  { "singleton": true, "requiredVersion": "1.0.0",  "eager": true }
 }

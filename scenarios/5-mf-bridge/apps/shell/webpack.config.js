@@ -23,12 +23,15 @@ module.exports = {
   plugins: [
     new ModuleFederationPlugin({
       name: 'shell',
-      // Remotes now expose `entry` (the bridge's register factory) instead of
+      // Remotes expose `entry` (the bridge's register factory) instead of
       // raw components. Shell loads them via MFBridgeLazy.
       remotes: {
         catalog: 'catalog@http://localhost:3001/remoteEntry.js',
         checkout: 'checkout@http://localhost:3002/remoteEntry.js',
       },
+      // Note: zustand is NOT shared — it's a shell-internal state library
+      // and neither remote uses it. Declaring it as shared would be a
+      // "ghost share" (shared by only one MF, used by no one else).
       shared: {
         react: {
           singleton: true,
@@ -45,9 +48,9 @@ module.exports = {
           requiredVersion: deps['react-router-dom'],
           eager: true,
         },
-        zustand: {
+        '@mf-toolkit/mf-bridge': {
           singleton: true,
-          requiredVersion: deps.zustand,
+          requiredVersion: deps['@mf-toolkit/mf-bridge'],
           eager: true,
         },
       },

@@ -24,11 +24,13 @@ module.exports = {
     new ModuleFederationPlugin({
       name: 'checkout',
       filename: 'remoteEntry.js',
-      // Exposes the bridge entry. Host loads via:
+      // Bridge entry — host loads via:
       //   import('checkout/entry').then(m => m.register)
       exposes: {
         './entry': './src/entry',
       },
+      // Pure-rendering remote — no zustand. Cart state lives in the shell
+      // and is streamed in as props via MFBridgeLazy.
       shared: {
         react: {
           singleton: true,
@@ -42,9 +44,9 @@ module.exports = {
           singleton: true,
           requiredVersion: deps['react-router-dom'],
         },
-        zustand: {
+        '@mf-toolkit/mf-bridge': {
           singleton: true,
-          requiredVersion: deps.zustand,
+          requiredVersion: deps['@mf-toolkit/mf-bridge'],
         },
       },
     }),

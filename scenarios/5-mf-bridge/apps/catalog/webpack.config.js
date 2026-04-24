@@ -24,8 +24,8 @@ module.exports = {
     new ModuleFederationPlugin({
       name: 'catalog',
       filename: 'remoteEntry.js',
-      // Exposes the bridge entry instead of the raw component.
-      // Host loads it via: import('catalog/entry').then(m => m.register)
+      // Bridge entry (typed register factory) instead of raw component.
+      // Host loads via: import('catalog/entry').then(m => m.register)
       exposes: {
         './entry': './src/entry',
       },
@@ -41,6 +41,10 @@ module.exports = {
         'react-router-dom': {
           singleton: true,
           requiredVersion: deps['react-router-dom'],
+        },
+        '@mf-toolkit/mf-bridge': {
+          singleton: true,
+          requiredVersion: deps['@mf-toolkit/mf-bridge'],
         },
       },
     }),

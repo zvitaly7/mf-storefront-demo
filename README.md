@@ -198,14 +198,16 @@ checkout Score: 4/100    🔴 CRITICAL
 
 ### Scenario 5 — MF Bridge Integration
 
-A healthy federation wired through [`@mf-toolkit/mf-bridge`](https://github.com/zvitaly7/mf-toolkit/tree/main/packages/mf-bridge) instead of raw `React.lazy` + `Suspense`. Shared configs are identical to scenario 1, so all three apps still score 100/100 — the difference is at the runtime layer, not the build layer.
+A healthy federation wired through [`@mf-toolkit/mf-bridge`](https://github.com/zvitaly7/mf-toolkit/tree/main/packages/mf-bridge) instead of raw `React.lazy` + `Suspense`. All three apps, and the federation as a whole, still score 100/100 — the bridge lives at the runtime layer, not the build layer.
 
 > The remotes expose a single `./entry` returning a typed `register` factory produced by
 > `createMFEntry`. The shell mounts each remote with `<MFBridgeLazy>`, which owns the
-> loading state, retries, error fallback, and typed prop streaming. Checkout uses
-> `emit('orderPlaced', …)` on the remote side; the shell handles it via `onEvent` and
-> navigates to the confirmation route. The shell can also push commands into the
-> remote through `commandRef` (`cmd('reset')` clears the cart).
+> loading state, retries, error fallback, and typed prop streaming. The cart state
+> lives in the shell and is streamed to checkout as props; every change dispatches
+> a `CustomEvent` on the mount element and the remote re-renders. Checkout emits
+> `orderPlaced` via `emit()` — the shell picks it up through `onEvent` and navigates
+> to `/confirmation`. The shell can also send commands into the remote through
+> `commandRef` (`cmdRef.current('reset')`).
 
 ```
 remote  catalog/src/entry.ts    export const register = createMFEntry(ProductList)
@@ -214,20 +216,20 @@ remote  checkout/src/entry.ts   export const register = createMFEntry(Cart, ({em
 host    shell/src/features/Checkout.tsx
           <MFBridgeLazy
             register={() => import('checkout/entry').then(m => m.register)}
-            props={{ userId }}                    ← typed, streamed via CustomEvent
-            fallback={…}  errorFallback={…}       ← no Suspense / error boundary needed
+            props={{ userId, items, onRemove, onClear }}   ← streamed via CustomEvent on change
+            fallback={…}  errorFallback={…}                ← no Suspense / error boundary needed
             retryCount={2} retryDelay={500}
-            onEvent={(type, payload) => …}        ← remote → host events
-            commandRef={cmdRef}                   ← host → remote commands
+            onEvent={(type, payload) => …}                 ← remote → host events
+            commandRef={cmdRef}                            ← host → remote commands
           />
 ```
 
-**What this demonstrates:** the same federation, minus the boilerplate. The bridge replaces per-remote `React.lazy` wrappers, ad-hoc error boundaries, manual retry logic, hand-rolled global emitters (`window.*`), and the untyped `declare module 'catalog/ProductList'` stubs with a single typed mount component. `shared-inspector` still scores the federation exactly as it did in scenario 1 — the bridge lives at a different layer.
+**What this demonstrates:** the same federation, minus the boilerplate — and with a cleaner state story. The bridge replaces per-remote `React.lazy` wrappers, ad-hoc error boundaries, manual retry logic, hand-rolled global emitters (`window.*`), and the untyped `declare module 'catalog/ProductList'` stubs with a single typed mount component. Shell-internal state (auth, cart) drops from `zustand` to `React.createContext` + `useReducer` because no remote consumes it — this in turn removes the would-be "ghost share" the inspector would otherwise flag at the federation level. `@mf-toolkit/mf-bridge` is itself declared `singleton: true` in every app's shared config.
 
 ```
-shell    Score: 100/100  ✅ HEALTHY
-catalog  Score: 100/100  ✅ HEALTHY
-checkout Score: 100/100  ✅ HEALTHY
+shell      Score: 100/100  ✅ HEALTHY
+catalog    Score: 100/100  ✅ HEALTHY
+checkout   Score: 100/100  ✅ HEALTHY
 federation Score: 100/100  ✅ HEALTHY
 ```
 
