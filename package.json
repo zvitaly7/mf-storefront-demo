@@ -8,11 +8,13 @@
     "demo:drift": "bash demo.sh --scenario 2",
     "demo:federation": "bash demo.sh --scenario 3",
     "demo:critical": "bash demo.sh --scenario 4",
+    "demo:bridge": "bash demo.sh --scenario 5",
     "demo:depth": "bash demo.sh --depth",
     "demo:ci-gate": "bash demo.sh --ci-gate",
     "gate": "ts-node scripts/federation-gate.ts"
   },
   "devDependencies": {
+    "@mf-toolkit/mf-bridge": "^1.0.0",
     "@mf-toolkit/shared-inspector": "^0.5.3",
     "@types/lodash": "^4.17.0",
     "lodash": "^4.17.21",

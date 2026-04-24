@@ -11,6 +11,7 @@
 #    bash demo.sh --app catalog    # one app across all scenarios
 #    bash demo.sh --depth          # depth comparison only
 #    bash demo.sh --ci-gate        # CI gate demonstration only
+#    bash demo.sh --bridge         # mf-bridge integration diff only
 # ============================================================
 set -euo pipefail
 
@@ -27,6 +28,7 @@ SCENARIO_FILTER=""
 APP_FILTER=""
 DEPTH_ONLY=false
 CI_GATE_ONLY=false
+BRIDGE_ONLY=false
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -34,6 +36,7 @@ while [[ $# -gt 0 ]]; do
     --app)       APP_FILTER="$2";      shift 2 ;;
     --depth)     DEPTH_ONLY=true;      shift   ;;
     --ci-gate)   CI_GATE_ONLY=true;    shift   ;;
+    --bridge)    BRIDGE_ONLY=true;     shift   ;;
     *) echo "Unknown argument: $1"; exit 1 ;;
   esac
 done
@@ -131,6 +134,50 @@ run_depth_comparison() {
   echo -e "  ${DIM}the federation analyzer sees catalog actually uses it (local-graph surfaces it).${RESET}"
 }
 
+run_bridge_comparison() {
+  header "MF Bridge — host/remote wiring diff"
+
+  local before="$ROOT/scenarios/1-healthy/apps/shell/src/App.tsx"
+  local after_app="$ROOT/scenarios/5-mf-bridge/apps/shell/src/App.tsx"
+  local after_checkout="$ROOT/scenarios/5-mf-bridge/apps/shell/src/features/Checkout.tsx"
+  local remote_entry="$ROOT/scenarios/5-mf-bridge/apps/checkout/src/entry.ts"
+
+  subheader "  Before — raw React.lazy + Suspense (scenarios/1-healthy)"
+  echo -e "${DIM}    $before${RESET}"
+  sed -n '1,20p' "$before" | sed 's/^/    /'
+
+  subheader "  After — MFBridgeLazy (scenarios/5-mf-bridge)"
+  echo -e "${DIM}    $after_app${RESET}"
+  sed -n '1,20p' "$after_app" | sed 's/^/    /'
+
+  subheader "  Host wrapper — typed props, fallback, retries, events"
+  echo -e "${DIM}    $after_checkout${RESET}"
+  cat "$after_checkout" | sed 's/^/    /'
+
+  subheader "  Remote entry — createMFEntry (emit + onCommand)"
+  echo -e "${DIM}    $remote_entry${RESET}"
+  cat "$remote_entry" | sed 's/^/    /'
+
+  subheader "  What the bridge replaces"
+  echo -e "    ${DIM}- manual React.lazy + Suspense wrappers per remote${RESET}"
+  echo -e "    ${DIM}- hand-written error boundaries for remote load failures${RESET}"
+  echo -e "    ${DIM}- ad-hoc retry logic and loading-state tracking${RESET}"
+  echo -e "    ${DIM}- global emitters or window singletons for remote events${RESET}"
+  echo -e "    ${DIM}- untyped 'catalog/ProductList' declarations.d.ts stubs${RESET}"
+
+  echo -e "\n  ${BOLD}Per-app inspector scores (scenario 5 stays healthy)${RESET}"
+  separator
+  for app_dir in "$ROOT/scenarios/5-mf-bridge"/apps/*/; do
+    [[ -d "$app_dir" ]] || continue
+    local app_name
+    app_name=$(basename "$app_dir")
+    local kind
+    kind=$([ "$app_name" = "shell" ] && echo "host" || echo "remote")
+    inspect_app "$app_dir" "$app_name" "$kind"
+  done
+  run_federation "$ROOT/scenarios/5-mf-bridge"
+}
+
 run_ci_gate() {
   header "CI Gate — federation-gate.ts"
 
@@ -166,17 +213,28 @@ if $CI_GATE_ONLY; then
   exit 0
 fi
 
+if $BRIDGE_ONLY; then
+  run_bridge_comparison
+  echo ""
+  exit 0
+fi
+
 declare -A LABELS=(
   [1]="1-healthy:Healthy Baseline"
   [2]="2-drift:Configuration Drift"
   [3]="3-federation-issues:Federation Issues"
   [4]="4-critical:Critical — Everything Wrong"
+  [5]="5-mf-bridge:MF Bridge Integration"
 )
 
-for num in 1 2 3 4; do
+for num in 1 2 3 4 5; do
   IFS=: read -r dir label <<< "${LABELS[$num]}"
   [[ -n "$SCENARIO_FILTER" && "$SCENARIO_FILTER" != "$num" ]] && continue
-  run_scenario "$num" "$dir" "$label"
+  if [[ "$num" == "5" ]]; then
+    run_bridge_comparison
+  else
+    run_scenario "$num" "$dir" "$label"
+  fi
 done
 
 if [[ -z "$SCENARIO_FILTER" && -z "$APP_FILTER" ]]; then
@@ -190,4 +248,5 @@ echo -e "${DIM}  bash demo.sh --scenario 2      focus on one scenario${RESET}"
 echo -e "${DIM}  bash demo.sh --app catalog      compare one app across all scenarios${RESET}"
 echo -e "${DIM}  bash demo.sh --depth            barrel depth comparison only${RESET}"
 echo -e "${DIM}  bash demo.sh --ci-gate          CI gate demonstration only${RESET}"
+echo -e "${DIM}  bash demo.sh --bridge           mf-bridge integration diff only${RESET}"
 echo ""

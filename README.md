@@ -6,7 +6,7 @@
 [![webpack](https://img.shields.io/badge/webpack-5-8DD6F9?logo=webpack)](https://webpack.js.org)
 [![inspector](https://img.shields.io/npm/v/@mf-toolkit/shared-inspector?label=%40mf-toolkit%2Fshared-inspector&color=CB3837&logo=npm)](https://www.npmjs.com/package/@mf-toolkit/shared-inspector)
 
-A demonstration repository for [@mf-toolkit/shared-inspector](https://github.com/zvitaly7/mf-toolkit/tree/main/packages/shared-inspector). Four real-world microfrontend scenarios — healthy, drifted, federation-broken, and critically misconfigured — all in one branch, runnable with a single command.
+A demonstration repository for [@mf-toolkit](https://github.com/zvitaly7/mf-toolkit). Five real-world microfrontend scenarios — healthy, drifted, federation-broken, critically misconfigured, and a runtime integration via [`@mf-toolkit/mf-bridge`](https://github.com/zvitaly7/mf-toolkit/tree/main/packages/mf-bridge) — all in one branch, runnable with a single command.
 
 ```bash
 git clone https://github.com/zvitaly7/mf-storefront-demo
@@ -41,7 +41,9 @@ mf-storefront-demo/
 │   │   └── apps/{shell,catalog,checkout}/
 │   ├── 3-federation-issues/ ← per-app 100/100, federation reveals hidden issues
 │   │   └── apps/{shell,catalog,checkout}/
-│   └── 4-critical/          ← everything wrong: shell 20, catalog 1, checkout 4
+│   ├── 4-critical/          ← everything wrong: shell 20, catalog 1, checkout 4
+│   │   └── apps/{shell,catalog,checkout}/
+│   └── 5-mf-bridge/         ← healthy federation, wired via @mf-toolkit/mf-bridge
 │       └── apps/{shell,catalog,checkout}/
 ├── scripts/
 │   └── federation-gate.ts   ← CI score gate
@@ -68,6 +70,9 @@ bash demo.sh --depth
 
 # CI gate demonstration only
 bash demo.sh --ci-gate
+
+# mf-bridge integration diff only
+bash demo.sh --bridge
 ```
 
 Or via npm:
@@ -76,11 +81,12 @@ Or via npm:
 npm run demo
 npm run demo:drift
 npm run demo:federation
+npm run demo:bridge
 ```
 
 ---
 
-## Four Scenarios
+## Scenarios
 
 ### Scenario 1 — Healthy Baseline
 
@@ -187,6 +193,43 @@ checkout Score: 4/100    🔴 CRITICAL
 ```
 
 **What this demonstrates:** The floor. This is what happens when a team copies an old shared config from a React 16 / React Router 5 / Zustand 3 project into a React 18 stack without updating anything. The CI gate section shows how `federation-gate.ts --min-score 90` catches this before it ships.
+
+---
+
+### Scenario 5 — MF Bridge Integration
+
+A healthy federation wired through [`@mf-toolkit/mf-bridge`](https://github.com/zvitaly7/mf-toolkit/tree/main/packages/mf-bridge) instead of raw `React.lazy` + `Suspense`. Shared configs are identical to scenario 1, so all three apps still score 100/100 — the difference is at the runtime layer, not the build layer.
+
+> The remotes expose a single `./entry` returning a typed `register` factory produced by
+> `createMFEntry`. The shell mounts each remote with `<MFBridgeLazy>`, which owns the
+> loading state, retries, error fallback, and typed prop streaming. Checkout uses
+> `emit('orderPlaced', …)` on the remote side; the shell handles it via `onEvent` and
+> navigates to the confirmation route. The shell can also push commands into the
+> remote through `commandRef` (`cmd('reset')` clears the cart).
+
+```
+remote  catalog/src/entry.ts    export const register = createMFEntry(ProductList)
+remote  checkout/src/entry.ts   export const register = createMFEntry(Cart, ({emit,onCommand}) => …)
+
+host    shell/src/features/Checkout.tsx
+          <MFBridgeLazy
+            register={() => import('checkout/entry').then(m => m.register)}
+            props={{ userId }}                    ← typed, streamed via CustomEvent
+            fallback={…}  errorFallback={…}       ← no Suspense / error boundary needed
+            retryCount={2} retryDelay={500}
+            onEvent={(type, payload) => …}        ← remote → host events
+            commandRef={cmdRef}                   ← host → remote commands
+          />
+```
+
+**What this demonstrates:** the same federation, minus the boilerplate. The bridge replaces per-remote `React.lazy` wrappers, ad-hoc error boundaries, manual retry logic, hand-rolled global emitters (`window.*`), and the untyped `declare module 'catalog/ProductList'` stubs with a single typed mount component. `shared-inspector` still scores the federation exactly as it did in scenario 1 — the bridge lives at a different layer.
+
+```
+shell    Score: 100/100  ✅ HEALTHY
+catalog  Score: 100/100  ✅ HEALTHY
+checkout Score: 100/100  ✅ HEALTHY
+federation Score: 100/100  ✅ HEALTHY
+```
 
 ---
 
@@ -302,7 +345,8 @@ The dynamic import is not optional — it gives webpack the chance to negotiate 
 
 ## Related
 
-- [@mf-toolkit/shared-inspector](https://github.com/zvitaly7/mf-toolkit/tree/main/packages/shared-inspector) — the tool this demo is built for
+- [@mf-toolkit/shared-inspector](https://github.com/zvitaly7/mf-toolkit/tree/main/packages/shared-inspector) — build-time shared-config linter (scenarios 1–4)
+- [@mf-toolkit/mf-bridge](https://github.com/zvitaly7/mf-toolkit/tree/main/packages/mf-bridge) — runtime mount/lifecycle/events for MF remotes (scenario 5)
 - [mf-toolkit](https://github.com/zvitaly7/mf-toolkit) — the full toolkit
 
 ## License
