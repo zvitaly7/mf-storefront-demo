@@ -233,6 +233,45 @@ checkout   Score: 100/100  ✅ HEALTHY
 federation Score: 100/100  ✅ HEALTHY
 ```
 
+#### How the inspector caught two real issues during this integration
+
+The 100/100 above is the *destination*, not the starting point. The first pass of the scenario-5 refactor — `createMFEntry` in both remotes, `MFBridgeLazy` in the shell, checkout rewritten as a pure-rendering component — compiled fine and looked correct. Running the inspector against it told a different story:
+
+```
+[MfSharedInspector] federation analysis (3 MFs)
+────────────────────────────────────────────────────────────
+
+→  Host Gap — @mf-toolkit/mf-bridge
+   used by: [catalog, checkout, shell], not in shared config
+   → Risk: Each MF bundles its own copy — larger bundles, possible state desync
+   💡 Fix:
+   shared: {
+     @mf-toolkit/mf-bridge: { singleton: true }
+   }
+
+✗  Ghost Share — zustand
+   shared only by: shell
+   unused by all other MFs
+   → One-sided coupling with no federation benefit
+   💡 Fix: Remove "zustand" from shell's shared config
+
+Score: 89/100  🟡 GOOD
+```
+
+Both are **real federation problems** the type-checker and webpack build can't see:
+
+- **Host Gap — `@mf-toolkit/mf-bridge`.** Every MF imports the bridge; no MF declares it shared. Each remote would ship its own copy of the bridge code, and the prop-streaming path relies on host and remote operating on the same `DOMEventBus` implementation on the shared mount element. Different copies → different event-name namespacing, cross-bundle mount points drifting apart, subtle prop-update bugs in production.
+- **Ghost Share — `zustand`.** Refactoring `checkout` to be a pure-rendering remote removed its zustand dependency, leaving `shell` the only MF declaring `zustand` as shared — and the only MF using it. Shell paid the shared-module negotiation cost for a library with no other consumers.
+
+The fixes applied to get to the clean 100/100 above:
+
+| Issue | Fix |
+|---|---|
+| Host Gap on `@mf-toolkit/mf-bridge` | Declared `{ singleton: true }` in all three apps' `shared-config.json` + `webpack.config.js` |
+| Ghost Share on `zustand` | Dropped zustand from `shell` entirely — shell's auth/cart state moved to `React.createContext` + `useReducer` (state is shell-internal and streamed into checkout as props, so no cross-MF store is needed) |
+
+> **Why this matters for the demo.** Scenarios 1–4 stage misconfigurations deliberately. Scenario 5's two findings were *not* planted — they emerged organically while integrating a new runtime library, and the build-time inspector caught them before any of it shipped. This is the everyday case for `shared-inspector`: it's a lint for the federation layer that catches mistakes the compiler can't.
+
 ---
 
 ## Depth Analysis — Barrel Pattern
