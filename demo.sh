@@ -12,7 +12,8 @@
 #    bash demo.sh --depth          # depth comparison only
 #    bash demo.sh --ci-gate        # CI gate demonstration only
 #    bash demo.sh --bridge         # mf-bridge integration diff only
-#    bash demo.sh --ssr             # mf-ssr capability demo only
+#    bash demo.sh --ssr            # mf-ssr capability demo only
+#    bash demo.sh --mf2            # MF 2.0 mf-manifest.json ingestion only
 # ============================================================
 set -euo pipefail
 
@@ -31,6 +32,7 @@ DEPTH_ONLY=false
 CI_GATE_ONLY=false
 BRIDGE_ONLY=false
 SSR_ONLY=false
+MF2_ONLY=false
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -40,6 +42,7 @@ while [[ $# -gt 0 ]]; do
     --ci-gate)   CI_GATE_ONLY=true;    shift   ;;
     --bridge)    BRIDGE_ONLY=true;     shift   ;;
     --ssr)       SSR_ONLY=true;        shift   ;;
+    --mf2)       MF2_ONLY=true;        shift   ;;
     *) echo "Unknown argument: $1"; exit 1 ;;
   esac
 done
@@ -236,6 +239,47 @@ run_ssr_comparison() {
   run_federation "$ROOT/scenarios/6-mf-ssr"
 }
 
+run_mf2_manifest() {
+  header "MF 2.0 manifest ingestion (new in v0.6.0)"
+
+  local dir="$ROOT/scenarios/7-mf-manifest/manifests"
+
+  echo -e "  Standard \`mf-manifest.json\` files emitted by \`@module-federation/enhanced\`"
+  echo -e "  builds in Webpack / Rspack / Vite / Next.js. The inspector auto-detects the"
+  echo -e "  shape and maps it onto its own ProjectManifest schema — no \`shared-config.json\`,"
+  echo -e "  no \`--source\`, no plugin integration required."
+  echo ""
+  for mf in "$dir"/*-mf-manifest.json; do
+    local name
+    name=$(basename "$mf")
+    echo -e "  ${DIM}$name${RESET}"
+    python3 -c "
+import json
+m = json.load(open('$mf'))
+shared = ', '.join(s['name'] + ('*' if s.get('singleton') else '') for s in m.get('shared', []))
+print(f'    name={m[\"name\"]:<10} type={m[\"metaData\"][\"type\"]:<6} shared=[{shared}]')
+print(f'    remotes={[r[\"alias\"] for r in m.get(\"remotes\", [])] or \"-\"}  exposes={[e[\"name\"] for e in m.get(\"exposes\", [])] or \"-\"}')
+"
+  done
+
+  subheader "  Federation analysis directly on the MF 2.0 manifests"
+  echo -e "${DIM}    \$ mf-inspector federation${RESET}"
+  for mf in "$dir"/*-mf-manifest.json; do
+    echo -e "${DIM}        ${mf#$ROOT/}${RESET}"
+  done
+  echo ""
+  $MF_CLI federation \
+    "$dir/shell-mf-manifest.json" \
+    "$dir/catalog-mf-manifest.json" \
+    "$dir/checkout-mf-manifest.json" \
+    2>&1 | sed 's/^/    /'
+
+  echo ""
+  echo -e "  ${DIM}Same singleton-mismatch + ghost-share findings as scenario 3 — but the${RESET}"
+  echo -e "  ${DIM}inspector read them straight from the build output, no hand-maintained${RESET}"
+  echo -e "  ${DIM}\`shared-config.json\` mirrors required.${RESET}"
+}
+
 run_ci_gate() {
   header "CI Gate — federation-gate.ts"
 
@@ -286,6 +330,12 @@ if $SSR_ONLY; then
   exit 0
 fi
 
+if $MF2_ONLY; then
+  run_mf2_manifest
+  echo ""
+  exit 0
+fi
+
 declare -A LABELS=(
   [1]="1-healthy:Healthy Baseline"
   [2]="2-drift:Configuration Drift"
@@ -309,6 +359,7 @@ done
 
 if [[ -z "$SCENARIO_FILTER" && -z "$APP_FILTER" ]]; then
   run_depth_comparison
+  run_mf2_manifest
   run_ci_gate
 fi
 
@@ -320,4 +371,5 @@ echo -e "${DIM}  bash demo.sh --depth            barrel depth comparison only${R
 echo -e "${DIM}  bash demo.sh --ci-gate          CI gate demonstration only${RESET}"
 echo -e "${DIM}  bash demo.sh --bridge           mf-bridge integration diff only${RESET}"
 echo -e "${DIM}  bash demo.sh --ssr              mf-ssr capability demo only${RESET}"
+echo -e "${DIM}  bash demo.sh --mf2              MF 2.0 mf-manifest.json ingestion only${RESET}"
 echo ""

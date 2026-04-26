@@ -11,6 +11,7 @@
     "demo:bridge": "bash demo.sh --scenario 5",
     "demo:ssr": "bash demo.sh --scenario 6",
     "demo:depth": "bash demo.sh --depth",
+    "demo:mf2": "bash demo.sh --mf2",
     "demo:ci-gate": "bash demo.sh --ci-gate",
     "gate": "ts-node scripts/federation-gate.ts",
     "ssr": "NODE_OPTIONS='--conditions=worker' tsx scripts/ssr-demo.mts"

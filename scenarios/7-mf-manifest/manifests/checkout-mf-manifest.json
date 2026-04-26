@@ -1,0 +1,25 @@
+{
+  "id": "checkout",
+  "name": "checkout",
+  "metaData": {
+    "name": "checkout",
+    "type": "app",
+    "buildInfo": { "buildVersion": "local", "buildName": "checkout" },
+    "remoteEntry": { "name": "remoteEntry.js", "path": "", "type": "global" },
+    "ssrRemoteEntry": { "name": "remoteEntry.js", "path": "", "type": "global" },
+    "types": { "path": "", "name": "@mf-types.zip", "zip": "@mf-types.zip", "api": "@mf-types.d.ts" },
+    "globalName": "checkout",
+    "pluginVersion": "0.18.4",
+    "publicPath": "auto",
+    "prefetchInterface": false
+  },
+  "shared": [
+    { "name": "react", "version": "18.3.1", "requiredVersion": "^18.3.1", "singleton": true, "eager": false, "from": "checkout", "scope": ["default"] },
+    { "name": "react-dom", "version": "18.3.1", "requiredVersion": "^18.3.1", "singleton": true, "eager": false, "from": "checkout", "scope": ["default"] },
+    { "name": "zustand", "version": "4.5.2", "requiredVersion": "^4.5.2", "singleton": false, "eager": false, "from": "checkout", "scope": ["default"] }
+  ],
+  "remotes": [],
+  "exposes": [
+    { "id": "checkout:Cart", "name": "Cart", "assets": { "js": { "sync": [], "async": [] }, "css": { "sync": [], "async": [] } }, "path": "./Cart" }
+  ]
+}

@@ -47,13 +47,15 @@ mf-storefront-demo/
 │   │   └── apps/{shell,catalog,checkout}/
 │   ├── 5-mf-bridge/         ← healthy federation, wired via @mf-toolkit/mf-bridge
 │   │   └── apps/{shell,catalog,checkout}/
-│   └── 6-mf-ssr/            ← SSR fragments + client hydration via @mf-toolkit/mf-ssr
-│       └── apps/
-│           ├── shell/src/     ← <MFBridgeSSR> (loader + url mode)
-│           ├── catalog/src/   ← Loader-Mode remote (exposes component)
-│           └── checkout/
-│               ├── src/       ← client bundle (Cart + hydrate.ts)
-│               └── server/    ← fragment handler for Node/edge/workers
+│   ├── 6-mf-ssr/            ← SSR fragments + client hydration via @mf-toolkit/mf-ssr
+│   │   └── apps/
+│   │       ├── shell/src/     ← <MFBridgeSSR> (loader + url mode)
+│   │       ├── catalog/src/   ← Loader-Mode remote (exposes component)
+│   │       └── checkout/
+│   │           ├── src/       ← client bundle (Cart + hydrate.ts)
+│   │           └── server/    ← fragment handler for Node/edge/workers
+│   └── 7-mf-manifest/       ← MF 2.0 mf-manifest.json fixtures (new in inspector v0.6.0)
+│       └── manifests/{shell,catalog,checkout}-mf-manifest.json
 ├── scripts/
 │   ├── federation-gate.ts   ← CI score gate
 │   └── ssr-demo.mts         ← live mf-ssr capability demo (10 cases)
@@ -86,6 +88,9 @@ bash demo.sh --bridge
 
 # mf-ssr live capability demo only
 bash demo.sh --ssr
+
+# MF 2.0 mf-manifest.json ingestion only (new in inspector v0.6.0)
+bash demo.sh --mf2
 ```
 
 Or via npm:
@@ -96,6 +101,7 @@ npm run demo:drift
 npm run demo:federation
 npm run demo:bridge
 npm run demo:ssr
+npm run demo:mf2
 ```
 
 ---
@@ -377,6 +383,39 @@ federation Score: 100/100  ✅ HEALTHY
 > SSR-shaped to point at.
 
 **What this demonstrates:** `shared-inspector` + `mf-bridge` catch build-time and client-runtime concerns. `mf-ssr` adds the **first-paint** layer — actual rendered HTML reaches the browser before JS loads, measured in real bytes here, not hand-waving. The three packages compose: the same remote can be rendered by mf-ssr server-side and kept interactive by mf-bridge client-side, and the shared-inspector keeps the federation configuration honest through all of it.
+
+---
+
+### Scenario 7 — MF 2.0 `mf-manifest.json` ingestion
+
+A separate fixture, no apps. Three hand-written `mf-manifest.json` files (`scenarios/7-mf-manifest/manifests/`) in the exact shape `@module-federation/enhanced` emits next to `remoteEntry.js` in `dist/` for Webpack, Rspack, Vite and Next.js builds. v0.6.0's auto-detection means the inspector can run `federation` analysis directly against this output — no `shared-config.json` mirror, no `--source`, no plugin integration.
+
+![scenario 7](./assets/demo-s7.gif)
+
+```bash
+bash demo.sh --mf2    # or: npm run demo:mf2
+```
+
+```
+$ mf-inspector federation \
+    scenarios/7-mf-manifest/manifests/shell-mf-manifest.json \
+    scenarios/7-mf-manifest/manifests/catalog-mf-manifest.json \
+    scenarios/7-mf-manifest/manifests/checkout-mf-manifest.json
+
+⚠ Singleton Mismatch — zustand    (singleton in [shell], not in [checkout])
+✗ Ghost Share        — lodash     (shared only by shell, unused elsewhere)
+Score: 89/100  🟡 GOOD
+```
+
+Same two findings as scenario 3, except scenario 3 needed three `shared-config.json` mirrors hand-maintained against three `webpack.config.js` files. Here the inspector reads what the build *actually* shipped — the post-resolution shared block, the actual chosen versions, the actual exposes/remotes — directly from the build output. In a real MF 2.0 polyrepo the CI step is just:
+
+```bash
+mf-inspector federation https://shell.example/mf-manifest.json \
+                        https://catalog.example/mf-manifest.json \
+                        https://checkout.example/mf-manifest.json
+```
+
+(URL ingestion is built in — handy for fanned-out CDN-hosted manifests.)
 
 ---
 

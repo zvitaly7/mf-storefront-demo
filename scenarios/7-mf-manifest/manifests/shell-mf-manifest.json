@@ -1,0 +1,27 @@
+{
+  "id": "shell",
+  "name": "shell",
+  "metaData": {
+    "name": "shell",
+    "type": "app",
+    "buildInfo": { "buildVersion": "local", "buildName": "shell" },
+    "remoteEntry": { "name": "remoteEntry.js", "path": "", "type": "global" },
+    "ssrRemoteEntry": { "name": "remoteEntry.js", "path": "", "type": "global" },
+    "types": { "path": "", "name": "@mf-types.zip", "zip": "@mf-types.zip", "api": "@mf-types.d.ts" },
+    "globalName": "shell",
+    "pluginVersion": "0.18.4",
+    "publicPath": "auto",
+    "prefetchInterface": false
+  },
+  "shared": [
+    { "name": "react", "version": "18.3.1", "requiredVersion": "^18.3.1", "singleton": true, "eager": true, "from": "shell", "scope": ["default"] },
+    { "name": "react-dom", "version": "18.3.1", "requiredVersion": "^18.3.1", "singleton": true, "eager": true, "from": "shell", "scope": ["default"] },
+    { "name": "zustand", "version": "4.5.2", "requiredVersion": "^4.5.2", "singleton": true, "eager": false, "from": "shell", "scope": ["default"] },
+    { "name": "lodash", "version": "4.17.21", "requiredVersion": "^4.17.21", "singleton": false, "eager": false, "from": "shell", "scope": ["default"] }
+  ],
+  "remotes": [
+    { "federationContainerName": "catalog@http://localhost:3001/remoteEntry.js", "moduleName": "ProductList", "alias": "catalog", "entry": "http://localhost:3001/remoteEntry.js" },
+    { "federationContainerName": "checkout@http://localhost:3002/remoteEntry.js", "moduleName": "Cart", "alias": "checkout", "entry": "http://localhost:3002/remoteEntry.js" }
+  ],
+  "exposes": []
+}
