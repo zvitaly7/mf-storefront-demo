@@ -18,7 +18,7 @@
   "devDependencies": {
     "@mf-toolkit/mf-bridge": "^1.0.0",
     "@mf-toolkit/mf-ssr": "^1.0.0",
-    "@mf-toolkit/shared-inspector": "^0.5.3",
+    "@mf-toolkit/shared-inspector": "^0.6.0",
     "@types/lodash": "^4.17.0",
     "lodash": "^4.17.21",
     "react": "^18.3.1",

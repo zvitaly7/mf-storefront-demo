@@ -246,14 +246,17 @@ run_ci_gate() {
     return
   fi
 
-  subheader "  Scenario 1 with threshold 90 — expected: PASS"
+  subheader "  Scenario 1 with threshold 80 — expected: PASS (0.6.0 baseline: react-dom/client deep-import → 80)"
+  $gate --scenario 1 --min-score 80 2>&1 | sed 's/^/  /' || true
+
+  subheader "  Scenario 1 with threshold 90 — expected: FAIL (deep-import bypass drops scores below 90)"
   $gate --scenario 1 --min-score 90 2>&1 | sed 's/^/  /' || true
 
-  subheader "  Scenario 2 with threshold 90 — expected: FAIL (catalog: 60, checkout: 84)"
-  $gate --scenario 2 --min-score 90 2>&1 | sed 's/^/  /' || true
+  subheader "  Scenario 2 with threshold 80 — expected: FAIL (catalog: 40, checkout: 64, federation: 52)"
+  $gate --scenario 2 --min-score 80 2>&1 | sed 's/^/  /' || true
 
-  subheader "  Scenario 4 with threshold 90 — expected: FAIL (all CRITICAL)"
-  $gate --scenario 4 --min-score 90 2>&1 | sed 's/^/  /' || true
+  subheader "  Scenario 4 with threshold 80 — expected: FAIL (every per-app score is 0)"
+  $gate --scenario 4 --min-score 80 2>&1 | sed 's/^/  /' || true
 }
 
 echo -e "\n${BOLD}  mf-storefront-demo${RESET}"
