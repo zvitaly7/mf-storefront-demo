@@ -17,8 +17,8 @@
     "ssr": "NODE_OPTIONS='--conditions=worker' tsx scripts/ssr-demo.mts"
   },
   "devDependencies": {
-    "@mf-toolkit/mf-bridge": "^1.0.0",
-    "@mf-toolkit/mf-ssr": "^1.0.0",
+    "@mf-toolkit/mf-bridge": "^1.0.2",
+    "@mf-toolkit/mf-ssr": "^1.0.2",
     "@mf-toolkit/shared-inspector": "^0.6.0",
     "@types/lodash": "^4.17.0",
     "lodash": "^4.17.21",

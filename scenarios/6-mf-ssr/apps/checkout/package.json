@@ -8,8 +8,8 @@
     "fragment": "tsx server/fragment-server.ts"
   },
   "dependencies": {
-    "@mf-toolkit/mf-bridge": "1.0.0",
-    "@mf-toolkit/mf-ssr": "1.0.0",
+    "@mf-toolkit/mf-bridge": "1.0.2",
+    "@mf-toolkit/mf-ssr": "1.0.2",
     "react": "18.3.1",
     "react-dom": "18.3.1"
   },

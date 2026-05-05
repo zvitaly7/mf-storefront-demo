@@ -7,7 +7,7 @@
     "build": "webpack --mode production"
   },
   "dependencies": {
-    "@mf-toolkit/mf-bridge": "1.0.0",
+    "@mf-toolkit/mf-bridge": "1.0.2",
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "react-router-dom": "6.22.3"
