@@ -17,7 +17,7 @@ const PRODUCTS: Product[] = [
 ];
 
 export default function Catalog() {
-  const addItem = useCartStore((s) => s.addItem);
+  const { addItem } = useCartStore();
 
   return (
     <MFBridgeSSR<ProductListProps>

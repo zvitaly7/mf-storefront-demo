@@ -17,6 +17,18 @@ createServer(async (req, res) => {
     headers: req.headers as Record<string, string>,
   });
 
+  // CORS for dev: lets the host fetch this fragment from a different origin
+  // (e.g. browser-side preloadFragment from http://localhost:3000). In
+  // production the host fetches server-side, so no CORS is required.
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Headers', '*');
+
+  if (req.method === 'OPTIONS') {
+    res.statusCode = 204;
+    res.end();
+    return;
+  }
+
   const fetchRes = await handler(fetchReq);
 
   res.statusCode = fetchRes.status;

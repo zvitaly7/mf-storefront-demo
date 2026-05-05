@@ -5,7 +5,7 @@ import { useCartStore } from '../store/cartStore';
 const loadCatalog = () => import('catalog/entry').then((m) => m.register);
 
 export default function Catalog() {
-  const addItem = useCartStore((s) => s.addItem);
+  const { addItem } = useCartStore();
 
   return (
     <MFBridgeLazy

@@ -1,17 +1,18 @@
 import React from 'react';
-import { hydrateRoot } from 'react-dom/client';
+import { createRoot, hydrateRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import { AuthProvider } from './store/authStore';
 import { CartProvider } from './store/cartStore';
 
-// Client-side hydration. The HTML was rendered on the server by `server.tsx`
-// via renderToPipeableStream — hydrateRoot attaches to that existing DOM.
+// In production the HTML is rendered on the server by `server.tsx` via
+// renderToPipeableStream and `hydrateRoot` attaches to that existing DOM.
+// In development (`webpack serve`) we don't run the SSR pipeline — the
+// served HTML has an empty <div id="root"> and `hydrateRoot` would log a
+// hydration mismatch. Detect that and fall back to `createRoot`.
 const container = document.getElementById('root')!;
 const ssrState = (window as any).__SSR_STATE__ ?? {};
-
-hydrateRoot(
-  container,
+const tree = (
   <React.StrictMode>
     <BrowserRouter>
       <AuthProvider initialUser={ssrState.user ?? null}>
@@ -22,3 +23,9 @@ hydrateRoot(
     </BrowserRouter>
   </React.StrictMode>
 );
+
+if (container.hasChildNodes()) {
+  hydrateRoot(container, tree);
+} else {
+  createRoot(container).render(tree);
+}

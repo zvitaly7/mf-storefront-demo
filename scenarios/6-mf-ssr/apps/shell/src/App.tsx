@@ -14,7 +14,8 @@ import Confirmation from './features/Confirmation';
 //   - hydration is done by the shell's hydrateRoot + per-remote hydrateWithBridge
 export default function App() {
   const { user, login, logout } = useAuthStore();
-  const itemCount = useCartStore((s) => s.items.reduce((n, i) => n + i.quantity, 0));
+  const { items } = useCartStore();
+  const itemCount = items.reduce((n, i) => n + i.quantity, 0);
 
   return (
     <div>

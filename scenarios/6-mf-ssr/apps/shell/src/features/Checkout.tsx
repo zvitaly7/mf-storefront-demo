@@ -1,6 +1,6 @@
 import React, { useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MFBridgeSSR, preloadFragment, type TypedSSROnEvent } from '@mf-toolkit/mf-ssr';
+import { MFBridgeSSR, preloadFragment } from '@mf-toolkit/mf-ssr';
 import { useAuthStore } from '../store/authStore';
 import { useCartStore } from '../store/cartStore';
 
@@ -20,10 +20,14 @@ export default function Checkout() {
   const { items, clearCart } = useCartStore();
   const cmdRef = useRef<((type: string, payload?: unknown) => void) | null>(null);
 
-  const onEvent: TypedSSROnEvent<CheckoutEvents> = (type, payload) => {
+  // NOTE: was `TypedSSROnEvent<CheckoutEvents>` but the generic signature does
+  // not narrow `payload` on `type` checks (the K type parameter stays free in
+  // the assignment context). Use a discriminating switch + assertion instead.
+  const onEvent = (type: string, payload: unknown) => {
     if (type === 'orderPlaced') {
+      const { orderId } = payload as CheckoutEvents['orderPlaced'];
       clearCart();
-      navigate(`/confirmation?o=${payload.orderId}`);
+      navigate(`/confirmation?o=${orderId}`);
     }
   };
 
